@@ -1,6 +1,6 @@
 {
   "name": "sevenzip-promise",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -10,6 +10,10 @@
   "license": "ISC",
   "dependencies": {
     "child_promise": "0.0.1",
-    "tmp": "0.0.25"
+    "tmp": "0.0.31"
+  },
+  "devDependencies": {
+    "eslint-config-airbnb": "^14.1.0",
+    "eslint-plugin-import": "^2.2.0"
   }
 }
