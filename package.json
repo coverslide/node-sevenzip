@@ -1,7 +1,7 @@
 {
-  "name": "sevenzip-promise",
-  "version": "0.1.0",
-  "description": "",
+  "name": "sevenzip",
+  "version": "1.0.0",
+  "description": "A utility for running sevenzip",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -9,8 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "child_promise": "0.0.1",
-    "tmp": "0.0.31"
+    "mz": "^2.6.0"
   },
   "devDependencies": {
     "eslint-config-airbnb": "^14.1.0",
