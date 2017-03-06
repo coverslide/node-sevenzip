@@ -1,26 +1,26 @@
 const { join } = require('path');
 const { mkdtemp } = require('mz/fs');
-const { exec }  = require('mz/child_process');
+const { execFile }  = require('mz/child_process');
 const { tmpdir } = require('os');
 
 const SevenZip = { executable: '7z' };
 
 module.exports = SevenZip;
 
-SevenZip.getFiles = async function getFiles(fullPath) {
-  const stdout = await runSevenZip(['l', fullPath]);
+SevenZip.getFiles = async function getFiles(fullPath, options) {
+  const stdout = await runSevenZip(['l', fullPath], options);
   return parseOutput(stdout);
 };
 
-SevenZip.extractFile = async function extractFile(fullPath, filename) {
+SevenZip.extractFile = async function extractFile(fullPath, filename, options) {
   const dir = await mkdtemp(tmpdir() + '/node-sevenzip-');
   const args = ['x', fullPath, `-o${dir}`, filename];
-  await runSevenZip(args);
+  await runSevenZip(args, options);
   return join(dir, filename);
 };
 
 async function runSevenZip(args, options) {
-  const [stdout] = await exec([SevenZip.executable].concat(args).join(' '), options);
+  const [stdout] = await execFile(SevenZip.executable, args, options);
   return stdout.split(/\r*\n/g).slice(3).join('\n');
 }
 
