@@ -1,26 +1,14 @@
 const { join } = require('path');
 const { mkdtemp } = require('mz/fs');
-const { execFile }  = require('mz/child_process');
+const { exec } = require('mz/child_process');
 const { tmpdir } = require('os');
 
 const SevenZip = { executable: '7z' };
 
 module.exports = SevenZip;
 
-SevenZip.getFiles = async function getFiles(fullPath, options) {
-  const stdout = await runSevenZip(['l', fullPath], options);
-  return parseOutput(stdout);
-};
-
-SevenZip.extractFile = async function extractFile(fullPath, filename, options) {
-  const dir = await mkdtemp(tmpdir() + '/node-sevenzip-');
-  const args = ['x', fullPath, `-o${dir}`, filename];
-  await runSevenZip(args, options);
-  return join(dir, filename);
-};
-
 async function runSevenZip(args, options) {
-  const [stdout] = await execFile(SevenZip.executable, args, options);
+  const [stdout] = await exec([SevenZip.executable].concat(args).join(' '), options);
   return stdout.split(/\r*\n/g).slice(3).join('\n');
 }
 
@@ -60,3 +48,17 @@ function parseOutput(output) {
   return files;
 }
 
+SevenZip.getFiles = async function getFiles(fullPath) {
+  const stdout = await runSevenZip(['l', fullPath]);
+  return parseOutput(stdout);
+};
+
+SevenZip.extractFile = async function extractFile(fullPath, filename) {
+  const dir = await mkdtemp(`${tmpdir()}/node-sevenzip-`);
+  const args = ['x', fullPath, `-o${dir}`, filename];
+  const stdout = await runSevenZip(args);
+  if (stdout.match(/^No files to process$/m)) {
+    throw new Error('No file found in archive');
+  }
+  return join(dir, filename);
+};
