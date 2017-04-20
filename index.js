@@ -1,6 +1,6 @@
 const { join } = require('path');
 const { mkdtemp } = require('mz/fs');
-const { exec } = require('mz/child_process');
+const { execFile } = require('mz/child_process');
 const { tmpdir } = require('os');
 
 const SevenZip = { executable: '7z' };
@@ -8,7 +8,7 @@ const SevenZip = { executable: '7z' };
 module.exports = SevenZip;
 
 async function runSevenZip(args, options) {
-  const [stdout] = await exec([SevenZip.executable].concat(args).join(' '), options);
+  const [stdout] = await execFile(SevenZip.executable, args, options);
   return stdout.split(/\r*\n/g).slice(3).join('\n');
 }
 
