@@ -1,5 +1,5 @@
 const { join } = require('path');
-const { mkdtemp } = require('mz/fs');
+const { mkdtemp, mkdir, stat } = require('mz/fs');
 const { execFile } = require('mz/child_process');
 const { tmpdir } = require('os');
 
@@ -54,7 +54,14 @@ SevenZip.getFiles = async function getFiles(fullPath) {
 };
 
 SevenZip.extractFile = async function extractFile(fullPath, filename) {
-  const dir = await mkdtemp(`${tmpdir()}/node-sevenzip-`);
+  const tmp = tmpdir();
+  // sometimes tmp does not exist
+  try {
+    await stat(tmp);
+  } catch (err) {
+    await mkdir(tmp);
+  }
+  const dir = await mkdtemp(`${tmp}/node-sevenzip-`);
   const args = ['x', fullPath, `-o${dir}`, filename];
   const stdout = await runSevenZip(args);
   if (stdout.match(/^No files to process$/m)) {
