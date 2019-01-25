@@ -8,7 +8,7 @@ const SevenZip = { executable: '7z' };
 module.exports = SevenZip;
 
 async function runSevenZip(args, options) {
-  const [stdout] = await execFile(SevenZip.executable, args, options);
+  const [stdout] = await execFile(SevenZip.executable, args, Object.assign({ maxBuffer: Infinity }, options));
   return stdout.split(/\r*\n/g).slice(3).join('\n');
 }
 
