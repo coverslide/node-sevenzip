@@ -1,71 +1,71 @@
-const { join } = require('path');
-const { mkdtemp, mkdir, stat } = require('mz/fs');
-const { execFile } = require('mz/child_process');
-const { tmpdir } = require('os');
+const readline = require('readline');
+const { spawn } = require('child_process');
 
-const SevenZip = { executable: '7z' };
+class SevenZip {
+  executable = '7z';
+
+  setExecutable(executable) {
+    this.executable = executable;
+  }
+
+  runAsync(...args) {
+    const process = spawn(this.executable, args);
+    return new Promise((resolve, reject) => {
+      const stderrBuffer = [];
+      process.stderr.on('data', (data) => {
+        stderrBuffer.push(data);
+      });
+      process.on('close', (code) => {
+        if (code != 0) {
+          reject(stderrBuffer.join(''));
+        }
+      });
+      process.on('error', reject);
+      process.on('spawn', () => resolve(process));
+    });
+  }
+
+  async getFiles(fullPath) {
+    const process = await this.runAsync('l', '-ba', '-slt', fullPath);
+    return await parseListOutputAsync(process.stdout);
+  }
+
+  async getSingleFile(fullPath, internalPath) {
+    const process = await this.runAsync('l', '-ba', '-slt', fullPath, internalPath);
+    const fileList = await parseListOutputAsync(process.stdout);
+    if (fileList.length < 1) {
+      throw new Error("File not found");
+    }
+    return fileList[0];
+  }
+
+  async extractFile(fullPath, internalPath) {
+    const process = await this.runAsync('x', fullPath, '-so', internalPath);
+    return process.stdout;
+  }
+}
+
+function parseListOutputAsync(stream){
+  const rl = readline.createInterface({ input: stream });
+  return new Promise((resolve, reject) => {
+    const files = [];
+    let currentFile = null;
+    rl.on('line', (line) => {
+      const parts = line.split(/ = /);
+      if (parts.length < 2) {
+        return;
+      }
+      const key = parts[0];
+      const value = parts[1];
+      if (key === 'Path') {
+        currentFile = {};
+        files.push(currentFile);
+      }
+      currentFile[key] = value;
+    });
+    rl.on('close', () => resolve(files));
+    rl.on('error', reject);
+  });
+}
 
 module.exports = SevenZip;
-
-async function runSevenZip(args, options) {
-  const [stdout] = await execFile(SevenZip.executable, args, Object.assign({ maxBuffer: Infinity }, options));
-  return stdout.split(/\r*\n/g).slice(3).join('\n');
-}
-
-function parseOutput(output) {
-  const lines = output.split(/[\n\r]+/);
-  let fileLines = false;
-  let lineRegExp = /^\s*(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*)\s*$/;
-  const files = [];
-  lines.forEach((line) => {
-    if (line.match(/----------/)) {
-      fileLines = !fileLines;
-      const lineLengthMatches = line.match(/(-+)(\s+)(-+)(\s+)(-+)(\s+)(-+)(\s+)/);
-      const lineLengths = Array.prototype.map.call(lineLengthMatches, match => match.length);
-      lineRegExp = new RegExp(
-        `${'^\\s*'
-        + '(.{'}${lineLengths[1]}})\\s{${lineLengths[2]}}`
-        + `(.{${lineLengths[3]}})\\s{${lineLengths[4]}}`
-        + `(.{${lineLengths[5]}})\\s{${lineLengths[6]}}`
-        + `(.{${lineLengths[7]}})\\s{${lineLengths[8]}}`
-        + '(.*)\\s*$');
-      return;
-    }
-    if (!fileLines) {
-      // check if we are above the fileLines
-      return;
-    }
-    const lineAttributesMatch = line.match(lineRegExp);
-    const lineAttributes = {
-      datetime: lineAttributesMatch[1],
-      attr: lineAttributesMatch[2],
-      usize: +lineAttributesMatch[3],
-      csize: +lineAttributesMatch[4],
-      filename: lineAttributesMatch[5],
-    };
-    files.push(lineAttributes);
-  });
-  return files;
-}
-
-SevenZip.getFiles = async function getFiles(fullPath) {
-  const stdout = await runSevenZip(['l', fullPath]);
-  return parseOutput(stdout);
-};
-
-SevenZip.extractFile = async function extractFile(fullPath, filename) {
-  const tmp = tmpdir();
-  // sometimes tmp does not exist
-  try {
-    await stat(tmp);
-  } catch (err) {
-    await mkdir(tmp);
-  }
-  const dir = await mkdtemp(`${tmp}/node-sevenzip-`);
-  const args = ['x', fullPath, `-o${dir}`, filename];
-  const stdout = await runSevenZip(args);
-  if (stdout.match(/^No files to process$/m)) {
-    throw new Error('No file found in archive');
-  }
-  return join(dir, filename);
-};
