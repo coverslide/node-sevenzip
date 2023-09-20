@@ -9,8 +9,8 @@ class SevenZip {
 	}
 
 	runAsync(...args) {
-		const child = spawn(this.executable, args);
 		return new Promise((resolve, reject) => {
+			const child = this.run(...args);
 			const stderrBuffer = [];
 			child.stdout.pause();
 			child.stderr.on('data', data => {
@@ -26,6 +26,10 @@ class SevenZip {
 		});
 	}
 
+	run(...args) {
+		return spawn(this.executable, args);
+	}
+
 	async getFiles(fullPath) {
 		const child = await this.runAsync('l', '-ba', '-slt', fullPath);
 		return parseListOutputAsync(child.stdout);
@@ -35,15 +39,14 @@ class SevenZip {
 		const child = await this.runAsync('l', '-ba', '-slt', fullPath, internalPath);
 		const fileList = await parseListOutputAsync(child.stdout);
 		if (fileList.length < 1) {
-			throw new Error('File not found');
+			throw new Error(`File not found: ${internalPath}`);
 		}
 
 		return fileList[0];
 	}
 
-	async extractFile(fullPath, internalPath) {
-		const child = await this.runAsync('x', fullPath, '-so', internalPath);
-		return child.stdout;
+	extractFile(fullPath, internalPath) {
+		return this.run('x', fullPath, '-so', internalPath).stdout;
 	}
 }
 
@@ -69,6 +72,7 @@ function parseListOutputAsync(stream) {
 		});
 		rl.on('close', () => resolve(files));
 		rl.on('error', reject);
+		stream.resume();
 	});
 }
 

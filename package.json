@@ -1,6 +1,6 @@
 {
   "name": "sevenzip",
-  "version": "2.0.4",
+  "version": "2.0.7",
   "description": "A utility for running sevenzip",
   "main": "index.js",
   "scripts": {
